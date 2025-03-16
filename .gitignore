@@ -1,3 +1,5 @@
 .DS_Stoer
 .vscode
 testFiles
+go.work
+go.work.sum
