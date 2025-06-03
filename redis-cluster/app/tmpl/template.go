@@ -4,18 +4,20 @@ import (
 	_ "embed"
 	"fmt"
 	"github.com/yzhlove/Gotool/redis-cluster/app/conf"
+	"path/filepath"
 )
 
 //go:embed redis-config.tpl
-var RedisTpl string
+var RedisTemplate string
 
 type Redis struct {
 	Port           string // redis 通信端口
 	BusPort        string // redis 总线端口
-	PidPath        string // pid 文件路径
-	LogPath        string // log 文件路径
-	DataDir        string // 持久化数据文件存放路径
 	ClusterCfgName string // 集群配置文件名称
+	WorkDir        string // 工作路径
+	PidPath        string // pid 文件名称
+	LogPath        string // 日志文件名称
+	DataDir        string // 数据存储路径
 }
 
 func NesRedisTpl(port string, functions ...RedisFunc) *Redis {
@@ -26,6 +28,7 @@ func NesRedisTpl(port string, functions ...RedisFunc) *Redis {
 		LogPath:        fmt.Sprintf("/%s/%s/redis.log", conf.RedisDir, port), // 默认路径 "/redis-cluster-test/port/redis.log"
 		DataDir:        fmt.Sprintf("/%s/%s/data", conf.RedisDir, port),      // 默认路径 "/redis-cluster-test/port/data"
 		ClusterCfgName: fmt.Sprintf("nodes-%s.conf", port),                   // 默认名称 "nodes-port.conf"
+		WorkDir:        "",
 	}
 	for _, fn := range functions {
 		fn(redis)
@@ -35,32 +38,13 @@ func NesRedisTpl(port string, functions ...RedisFunc) *Redis {
 
 type RedisFunc func(tmpl *Redis)
 
-func WithBusPort(busPort string) RedisFunc {
+func WithWorkDir(dir string) RedisFunc {
 	return func(tmpl *Redis) {
-		tmpl.BusPort = busPort
-	}
-}
-
-func WithPIDPath(pidPath string) RedisFunc {
-	return func(tmpl *Redis) {
-		tmpl.PidPath = pidPath
-	}
-}
-
-func WithLogPath(logPath string) RedisFunc {
-	return func(tmpl *Redis) {
-		tmpl.LogPath = logPath
-	}
-}
-
-func WithDataDir(dataDir string) RedisFunc {
-	return func(tmpl *Redis) {
-		tmpl.DataDir = dataDir
-	}
-}
-
-func WithClusterCfgName(clusterCfgName string) RedisFunc {
-	return func(tmpl *Redis) {
-		tmpl.ClusterCfgName = clusterCfgName
+		tmpl.WorkDir = dir
+		if len(dir) != 0 {
+			tmpl.PidPath = filepath.Join(dir, tmpl.PidPath)
+			tmpl.LogPath = filepath.Join(dir, tmpl.LogPath)
+			tmpl.DataDir = filepath.Join(dir, tmpl.DataDir)
+		}
 	}
 }

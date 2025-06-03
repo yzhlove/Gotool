@@ -21,17 +21,3 @@ dir {{ .DataDir }}
 cluster-announce-ip 127.0.0.1
 cluster-announce-port {{ .Port }}
 cluster-announce-bus-port {{ .BusPort }}
-
-# port 6380
-# daemonize yes
-# protected-mode no
-# logfile "/Users/yostar/Desktop/RedisCluster/data/redis/6380/redis.log"
-# cluster-enabled yes
-# cluster-config-file nodes-6380.conf
-# cluster-node-timeout 15000
-# dbfilename "dump.rdb"
-# dir "/Users/yostar/Desktop/RedisCluster/data/redis/6380"
-# cluster-announce-ip 10.155.120.139
-# cluster-announce-port 6380
-# cluster-announce-bus-port 16380
-# redis-cli --cluster create 127.0.0.1:6380 127.0.0.1:6381 127.0.0.1:6382 127.0.0.1:6383 127.0.0.1:6384 127.0.0.1:6385 --cluster-replicas 1

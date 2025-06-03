@@ -19,28 +19,42 @@ func Run() error {
 		return err
 	}
 
+	workdir := env.GetWorkDir()
 	// 模板文件存放路径
-	cfgDir := filepath.Join(conf.RedisDir, conf.RedisCfg)
+	var cfgDir string
+	if len(workdir) != 0 {
+		cfgDir = filepath.Join(workdir, conf.RedisDir, conf.RedisCfg)
+	} else {
+		cfgDir = filepath.Join(conf.RedisDir, conf.RedisCfg)
+	}
+
+	// 创建文件存放路径
 	if err := helper.CreateDir(cfgDir); err != nil {
 		return fmt.Errorf("create redis config dir error: %v", err)
 	}
 
 	// 创建 redis 模板
-	t, err := template.New("redis").Parse(tmpl.RedisTpl)
+	t, err := template.New("redis").Parse(tmpl.RedisTemplate)
 	if err != nil {
 		return fmt.Errorf("parse redis template error: %v", err)
 	}
 
 	// 创建 redis 配置文件
 	ports := env.GetRedisPorts()
+
 	for _, port := range ports {
 		// 创建配置文件模板
-		redisTpl := tmpl.NesRedisTpl(port)
+		redisTpl := tmpl.NesRedisTpl(port, tmpl.WithWorkDir(workdir))
 		metapath := filepath.Join(cfgDir, fmt.Sprintf("redis-%s.conf", port))
 
 		// 创建 redis 配置文件
 		if err = writeTemplate(t, metapath, redisTpl); err != nil {
 			return fmt.Errorf("write redis config file error: %v", err)
+		}
+
+		// 初始化 redis 目录环境
+		if err = initRedisDir(redisTpl); err != nil {
+			return fmt.Errorf("init redis dir error: %v", err)
 		}
 
 		// 根据配置文件启动 redis
@@ -72,4 +86,17 @@ func writeTemplate(t *template.Template, path string, data any) error {
 	defer f.Close()
 
 	return t.Execute(f, data)
+}
+
+func initRedisDir(t *tmpl.Redis) error {
+	if err := helper.CreateDir(filepath.Dir(t.PidPath)); err != nil {
+		return err
+	}
+	if err := helper.CreateDir(filepath.Dir(t.LogPath)); err != nil {
+		return err
+	}
+	if err := helper.CreateDir(t.DataDir); err != nil {
+		return err
+	}
+	return nil
 }
