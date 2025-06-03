@@ -2,7 +2,12 @@ SHELL=/bin/bash
 
 App:=redis-cluster
 Ports:="6381,6382,6383,6384,6385,6386"
-Dockerfile=Dockerfile
+Dockerfile:=Dockerfile
+Arch:=$(shell uname -m)
+
+ifneq ($(Arch),arm64)
+	Arch=amd64
+endif
 
 Cmd :=--rm=true --name $(App) -h $(App) -it \
 -e REDIS_PORTS=$(Ports) \
@@ -15,10 +20,11 @@ Cmd :=--rm=true --name $(App) -h $(App) -it \
 
 build:
 	@ echo -e "\nStart compile and rebuild...";\
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(App) .; \
+ 	echo -e "Arch is $(Arch)";\
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(Arch) go build -o $(App) .; \
 	docker rm -f $(App);\
 	docker rmi $(App);\
-	docker build --platform linux/amd64 --no-cache -t $(App) -f $(Dockerfile) .;\
+	docker build --platform linux/$(Arch) --no-cache -t $(App) -f $(Dockerfile) .;\
 	rm $(App)
 
 start:
