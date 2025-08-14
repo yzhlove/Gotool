@@ -5,10 +5,11 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/yzhlove/Gotool/signin/helper"
 	"io"
 	"math/rand/v2"
 	"strings"
+
+	"github.com/yzhlove/Gotool/signin/helper"
 )
 
 var (
@@ -189,4 +190,17 @@ func ToUint64(value string) (uint64, error) {
 		}
 	}
 	return number, nil
+}
+
+func Grow(value string, timestamp uint64) string {
+	l := len(value) / 2
+	if l != 0 && len(value)%2 != 0 {
+		l++
+	}
+	var sb strings.Builder
+	for i := 0; i < l; i++ {
+		num := rune(value[i]) * rune(value[len(value)-i-1]) * int32(timestamp)
+		sb.WriteString(ToString(uint64(num)))
+	}
+	return sb.String()
 }

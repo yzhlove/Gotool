@@ -3,5 +3,8 @@ package proto;
 option go_package = "./proto";
 
 message Ike {
-  bytes PublicKey = 1;// 客户端公钥
+  bytes DHPublicKey = 1; // DH公钥
+  bytes EcdsaPublicKey = 2; // ECDSA 公钥
+  uint64 Nonce = 3; // 随机数
+  bytes Signature = 4; // 签名
 }
