@@ -1,15 +1,8 @@
 package cipher
 
 import (
-	crand "crypto/rand"
-	"crypto/sha256"
 	"errors"
-	"fmt"
-	"io"
-	"math/rand/v2"
 	"strings"
-
-	"github.com/yzhlove/Gotool/signin/helper"
 )
 
 var (
@@ -104,41 +97,6 @@ var bookText = [][]byte{
 	[]byte("*nNTZGK9UjYylude#D8X1Q2V?C6HIFkrsWcgLxi@/w+t$SmbPo74vhqpO=R05Eaf!%AMJBz3"),
 }
 
-func BuildBook() {
-
-	seed1 := make([]byte, 32)
-	helper.Try(io.ReadFull(crand.Reader, seed1)).Must()
-
-	var sb strings.Builder
-	r1 := rand.New(rand.NewChaCha8(sha256.Sum256(seed1)))
-	for _, idx := range r1.Perm(int(basicLen)) {
-		sb.WriteRune(rune(basicText[idx]))
-	}
-
-	seedText := sb.String()
-	sb.Reset()
-	sb.WriteString("var seedText = \"")
-	sb.WriteString(seedText)
-	sb.WriteString("\"\n\n")
-	sb.WriteString("var bookText = [][]byte{\n")
-
-	clear(seed1)
-	helper.Try(io.ReadFull(strings.NewReader(seedText), seed1)).Must()
-
-	r2 := rand.New(rand.NewChaCha8(sha256.Sum256(seed1)))
-
-	for i := 0; i < int(basicLen); i++ {
-		sb.WriteString("\t[]byte(\"")
-		for _, idx := range r2.Perm(int(basicLen)) {
-			sb.WriteRune(rune(seedText[idx]))
-		}
-		sb.WriteString("\"),\n")
-	}
-
-	sb.WriteString("}\n")
-	fmt.Println(sb.String())
-}
-
 func ToString(value uint64) string {
 	hIdx := value % bookLen
 	bIdx := bookLen - hIdx - 1
@@ -199,8 +157,8 @@ func Grow(value string, timestamp uint64) string {
 	}
 	var sb strings.Builder
 	for i := 0; i < l; i++ {
-		num := rune(value[i]) * rune(value[len(value)-i-1]) * int32(timestamp)
-		sb.WriteString(ToString(uint64(num)))
+		num := uint64(rune(value[i])) * uint64(rune(value[len(value)-i-1])) * timestamp
+		sb.WriteString(ToString(num))
 	}
 	return sb.String()
 }

@@ -72,8 +72,8 @@ func IkeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	gcm.Open(nil)
 
-	dh := cipher.DH()
-	secret, err := dh.ECDH(cipher.NewPublicKey(ike.PublicKey))
+	dh := cipher.NewDHPrivateKey()
+	secret, err := dh.ECDH(cipher.NewDHPublicKey(ike.PublicKey))
 	if err != nil {
 		failAck(w, fmt.Errorf("ecdh error: %v", err))
 		return

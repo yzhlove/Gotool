@@ -7,17 +7,55 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	crand "crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"math/rand/v2"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/yzhlove/Gotool/signin/helper"
 )
 
+// 该函数只存在于测试用例，防止被编译进二进制包
+func buildBook() {
+	seed1 := make([]byte, 32)
+	helper.Try(io.ReadFull(crand.Reader, seed1)).Must()
+
+	var sb strings.Builder
+	r1 := rand.New(rand.NewChaCha8(sha256.Sum256(seed1)))
+	for _, idx := range r1.Perm(int(basicLen)) {
+		sb.WriteRune(rune(basicText[idx]))
+	}
+
+	seedText := sb.String()
+	sb.Reset()
+	sb.WriteString("var seedText = \"")
+	sb.WriteString(seedText)
+	sb.WriteString("\"\n\n")
+	sb.WriteString("var bookText = [][]byte{\n")
+
+	clear(seed1)
+	helper.Try(io.ReadFull(strings.NewReader(seedText), seed1)).Must()
+
+	r2 := rand.New(rand.NewChaCha8(sha256.Sum256(seed1)))
+
+	for i := 0; i < int(basicLen); i++ {
+		sb.WriteString("\t[]byte(\"")
+		for _, idx := range r2.Perm(int(basicLen)) {
+			sb.WriteRune(rune(seedText[idx]))
+		}
+		sb.WriteString("\"),\n")
+	}
+
+	sb.WriteString("}\n")
+	fmt.Println(sb.String())
+}
+
 func Test_GenBook(t *testing.T) {
-	BuildBook()
+	buildBook()
 }
 
 func Test_ToString(t *testing.T) {
