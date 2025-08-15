@@ -1,0 +1,8 @@
+syntax = "proto3";
+package proto;
+option go_package = "github.com/yzhlove/Gotool/signin/protocol/proto";
+
+message Login {
+  string Username = 1;
+  bytes Password = 2;
+}

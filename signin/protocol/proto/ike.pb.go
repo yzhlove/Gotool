@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v3.14.0
-// source: source/ike.proto
+// source: ike.proto
 
 package proto
 
@@ -23,9 +23,9 @@ const (
 
 type Ike struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	DHPublicKey    []byte                 `protobuf:"bytes,1,opt,name=DHPublicKey,proto3" json:"DHPublicKey,omitempty"`       // DH公钥
-	EcdsaPublicKey []byte                 `protobuf:"bytes,2,opt,name=EcdsaPublicKey,proto3" json:"EcdsaPublicKey,omitempty"` // ECDSA 公钥
-	Nonce          uint64                 `protobuf:"varint,3,opt,name=Nonce,proto3" json:"Nonce,omitempty"`                  // 随机数
+	Timestamp      uint64                 `protobuf:"varint,1,opt,name=Timestamp,proto3" json:"Timestamp,omitempty"`          // 时间戳
+	DHPublicKey    []byte                 `protobuf:"bytes,2,opt,name=DHPublicKey,proto3" json:"DHPublicKey,omitempty"`       // DH公钥
+	EcdsaPublicKey []byte                 `protobuf:"bytes,3,opt,name=EcdsaPublicKey,proto3" json:"EcdsaPublicKey,omitempty"` // ECDSA 公钥
 	Signature      []byte                 `protobuf:"bytes,4,opt,name=Signature,proto3" json:"Signature,omitempty"`           // 签名
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -33,7 +33,7 @@ type Ike struct {
 
 func (x *Ike) Reset() {
 	*x = Ike{}
-	mi := &file_source_ike_proto_msgTypes[0]
+	mi := &file_ike_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +45,7 @@ func (x *Ike) String() string {
 func (*Ike) ProtoMessage() {}
 
 func (x *Ike) ProtoReflect() protoreflect.Message {
-	mi := &file_source_ike_proto_msgTypes[0]
+	mi := &file_ike_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,7 +58,14 @@ func (x *Ike) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Ike.ProtoReflect.Descriptor instead.
 func (*Ike) Descriptor() ([]byte, []int) {
-	return file_source_ike_proto_rawDescGZIP(), []int{0}
+	return file_ike_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *Ike) GetTimestamp() uint64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
 }
 
 func (x *Ike) GetDHPublicKey() []byte {
@@ -75,13 +82,6 @@ func (x *Ike) GetEcdsaPublicKey() []byte {
 	return nil
 }
 
-func (x *Ike) GetNonce() uint64 {
-	if x != nil {
-		return x.Nonce
-	}
-	return 0
-}
-
 func (x *Ike) GetSignature() []byte {
 	if x != nil {
 		return x.Signature
@@ -89,34 +89,34 @@ func (x *Ike) GetSignature() []byte {
 	return nil
 }
 
-var File_source_ike_proto protoreflect.FileDescriptor
+var File_ike_proto protoreflect.FileDescriptor
 
-const file_source_ike_proto_rawDesc = "" +
+const file_ike_proto_rawDesc = "" +
 	"\n" +
-	"\x10source/ike.proto\x12\x05proto\"\x83\x01\n" +
-	"\x03Ike\x12 \n" +
-	"\vDHPublicKey\x18\x01 \x01(\fR\vDHPublicKey\x12&\n" +
-	"\x0eEcdsaPublicKey\x18\x02 \x01(\fR\x0eEcdsaPublicKey\x12\x14\n" +
-	"\x05Nonce\x18\x03 \x01(\x04R\x05Nonce\x12\x1c\n" +
-	"\tSignature\x18\x04 \x01(\fR\tSignatureB\tZ\a./protob\x06proto3"
+	"\tike.proto\x12\x05proto\"\x8b\x01\n" +
+	"\x03Ike\x12\x1c\n" +
+	"\tTimestamp\x18\x01 \x01(\x04R\tTimestamp\x12 \n" +
+	"\vDHPublicKey\x18\x02 \x01(\fR\vDHPublicKey\x12&\n" +
+	"\x0eEcdsaPublicKey\x18\x03 \x01(\fR\x0eEcdsaPublicKey\x12\x1c\n" +
+	"\tSignature\x18\x04 \x01(\fR\tSignatureB1Z/github.com/yzhlove/Gotool/signin/protocol/protob\x06proto3"
 
 var (
-	file_source_ike_proto_rawDescOnce sync.Once
-	file_source_ike_proto_rawDescData []byte
+	file_ike_proto_rawDescOnce sync.Once
+	file_ike_proto_rawDescData []byte
 )
 
-func file_source_ike_proto_rawDescGZIP() []byte {
-	file_source_ike_proto_rawDescOnce.Do(func() {
-		file_source_ike_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_source_ike_proto_rawDesc), len(file_source_ike_proto_rawDesc)))
+func file_ike_proto_rawDescGZIP() []byte {
+	file_ike_proto_rawDescOnce.Do(func() {
+		file_ike_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_ike_proto_rawDesc), len(file_ike_proto_rawDesc)))
 	})
-	return file_source_ike_proto_rawDescData
+	return file_ike_proto_rawDescData
 }
 
-var file_source_ike_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_source_ike_proto_goTypes = []any{
+var file_ike_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_ike_proto_goTypes = []any{
 	(*Ike)(nil), // 0: proto.Ike
 }
-var file_source_ike_proto_depIdxs = []int32{
+var file_ike_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -124,26 +124,26 @@ var file_source_ike_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_source_ike_proto_init() }
-func file_source_ike_proto_init() {
-	if File_source_ike_proto != nil {
+func init() { file_ike_proto_init() }
+func file_ike_proto_init() {
+	if File_ike_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_source_ike_proto_rawDesc), len(file_source_ike_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ike_proto_rawDesc), len(file_ike_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_source_ike_proto_goTypes,
-		DependencyIndexes: file_source_ike_proto_depIdxs,
-		MessageInfos:      file_source_ike_proto_msgTypes,
+		GoTypes:           file_ike_proto_goTypes,
+		DependencyIndexes: file_ike_proto_depIdxs,
+		MessageInfos:      file_ike_proto_msgTypes,
 	}.Build()
-	File_source_ike_proto = out.File
-	file_source_ike_proto_goTypes = nil
-	file_source_ike_proto_depIdxs = nil
+	File_ike_proto = out.File
+	file_ike_proto_goTypes = nil
+	file_ike_proto_depIdxs = nil
 }
