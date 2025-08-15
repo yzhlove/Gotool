@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"strconv"
 	"strings"
@@ -16,6 +17,8 @@ import (
 	"github.com/yzhlove/Gotool/signin/helper"
 	"golang.org/x/crypto/hkdf"
 )
+
+var errEcdsaVerify = errors.New("ecdsa verifySAN1 failed! ")
 
 func NewDHPrivateKey() *ecdh.PrivateKey {
 	return helper.Try(ecdh.P256().GenerateKey(rand.Reader)).Must()
@@ -25,9 +28,9 @@ func NewDHPublicKey(bytes []byte) *ecdh.PublicKey {
 	return helper.Try(ecdh.P256().NewPublicKey(bytes)).Must()
 }
 
-func HKDF(secret, slat, info []byte) []byte {
+func HKDF(secret, slot, info []byte) []byte {
 	trustyKey := make([]byte, 32)
-	helper.Try(io.ReadFull(hkdf.New(sha256.New, secret, slat, info), trustyKey)).Must()
+	helper.Try(io.ReadFull(hkdf.New(sha256.New, secret, slot, info), trustyKey)).Must()
 	return trustyKey
 }
 
@@ -89,18 +92,59 @@ func Encode(seed uint64) (*ecdh.PrivateKey, *Meta) {
 
 	spubKey, sg := EcdsaSignASN1(sha.Sum(nil))
 	return priv, &Meta{
+		Slot:               []byte(slot),
+		Info:               []byte(info),
 		DHPublicKey:        GCMSeal(gcm, dhPubKey, []byte(info)),
 		SignaturePublicKey: GCMSeal(gcm, spubKey, []byte(info)),
 		Signature:          GCMSeal(gcm, sg, []byte(info)),
 	}
 }
 
-func Decode(seed uint64, meta *Meta) (bool, error) {
+func Decode(seed uint64, meta *Meta) (*Meta, error) {
 
-	return true, nil
+	secret := ToString(seed)
+	slot := BuildSlot(secret, seed)
+	info := Grow(slot, seed)
+
+	super := HKDF([]byte(secret), []byte(slot), []byte(info))
+	gcm := NewAesGCM(super)
+
+	dhPubKey, err := GCMOpen(gcm, meta.DHPublicKey, []byte(info))
+	if err != nil {
+		return nil, err
+	}
+
+	spubKey, err := GCMOpen(gcm, meta.SignaturePublicKey, []byte(info))
+	if err != nil {
+		return nil, err
+	}
+
+	sg, err := GCMOpen(gcm, meta.Signature, []byte(info))
+	if err != nil {
+		return nil, err
+	}
+
+	sha := sha256.New()
+	sha.Write(dhPubKey)
+	sha.Write(super)
+	sha.Write([]byte(info))
+
+	if !EcdsaVerifyASN1(spubKey, sha.Sum(nil), sg) {
+		return nil, errEcdsaVerify
+	}
+
+	return &Meta{
+		Slot:               []byte(slot),
+		Info:               []byte(info),
+		DHPublicKey:        dhPubKey,
+		Signature:          sg,
+		SignaturePublicKey: spubKey,
+	}, nil
 }
 
 type Meta struct {
+	Slot               []byte
+	Info               []byte
 	DHPublicKey        []byte
 	SignaturePublicKey []byte
 	Signature          []byte
