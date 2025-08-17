@@ -19,7 +19,7 @@ func (ctx *Context) GetBody() []byte {
 	return helper.Try(io.ReadAll(ctx.req.Body)).Must()
 }
 
-func (ctx *Context) WithAEAD(aead cipher.AEAD) {
+func (ctx *Context) Bind(aead cipher.AEAD) {
 	ctx.aead = aead
 }
 

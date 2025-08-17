@@ -2,9 +2,17 @@ syntax = "proto3";
 package proto;
 option go_package = "github.com/yzhlove/Gotool/signin/protocol/proto";
 
-message Ike {
+message IkeReq {
   uint64 Timestamp = 1; // 时间戳
   bytes DHPublicKey = 2; // DH公钥
   bytes EcdsaPublicKey = 3; // ECDSA 公钥
   bytes Signature = 4; // 签名
+}
+
+message IkeResp {
+  uint64 Timestamp = 1; // 时间戳
+  bytes DHPublicKey = 2; // DH公钥
+  bytes EcdsaPublicKey = 3; // ECDSA 公钥
+  bytes Signature = 4; // 签名
+  string Token = 15;// Token
 }
