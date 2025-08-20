@@ -8,21 +8,21 @@ import (
 	"github.com/yzhlove/Gotool/signin/server/service"
 )
 
-type manager struct {
+type serviceContext struct {
 	data   sync.Map
 	ctx    stdctx.Context
 	cancel stdctx.CancelFunc
 }
 
-func (m *manager) Init() error {
+func (m *serviceContext) Init() error {
 	return nil
 }
 
-func (m *manager) Start() error {
+func (m *serviceContext) Start() error {
 	return nil
 }
 
-func (m *manager) Stop() error {
+func (m *serviceContext) Stop() error {
 	if m.cancel != nil {
 		m.cancel()
 	}
@@ -45,7 +45,7 @@ func Get(token string) *context.Context {
 }
 
 func New() (service.Service, error) {
-	return &manager{}, nil
+	return &serviceContext{}, nil
 }
 
-var _manager *manager
+var _manager *serviceContext

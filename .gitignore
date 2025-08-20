@@ -4,3 +4,6 @@ go.work
 go.work.sum
 .idea
 .DS_Store
+bagder
+cipher/badger
+cipher/badger/*

@@ -31,7 +31,7 @@ func RegHandle(ctx *context.Context) {
 	}
 
 	// 存储加强密码
-	if err = store.Save(reg.Username, passwd); err != nil {
+	if err = store.Set(reg.Username, passwd); err != nil {
 		ctx.JSON(buildErr(err))
 		return
 	}
