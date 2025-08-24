@@ -15,6 +15,19 @@ type Context struct {
 	aead cipher.AEAD
 }
 
+func New() *Context {
+	return &Context{}
+}
+
+func (ctx *Context) WithHTTP(req *http.Request, resp http.ResponseWriter) {
+	ctx.req = req
+	ctx.resp = resp
+}
+
+func (ctx *Context) GetRequestName() string {
+	return ctx.req.RequestURI
+}
+
 func (ctx *Context) GetBody() []byte {
 	return helper.Try(io.ReadAll(ctx.req.Body)).Must()
 }

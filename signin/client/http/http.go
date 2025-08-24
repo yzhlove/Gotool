@@ -34,7 +34,7 @@ func New() {
 	}
 }
 
-func Do(ctx context.Context, url string, meta M) (*Resp, error) {
+func Do(ctx context.Context, url string, meta *M) (*Resp, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(meta.Body))
 	if err != nil {
@@ -47,6 +47,7 @@ func Do(ctx context.Context, url string, meta M) (*Resp, error) {
 			req.Header.Set(value.Key, value.Value)
 		}
 	}
+
 	resp, err := _client.Do(req)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -54,6 +56,9 @@ func IkeHandle(ctx *context.Context) {
 	}
 
 	aesSecret := cipher.HKDF(aesKey, pm.Slot, pm.Info)
+
+	fmt.Println("AesSecret = ", hex.EncodeToString(aesSecret))
+
 	// 初始化 AES-GCM
 	ctx.Bind(cipher.NewAesGCM(aesSecret))
 	// 绑定context
