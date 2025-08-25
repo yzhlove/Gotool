@@ -22,23 +22,23 @@ func Set(key, value string) error {
 }
 
 func New(db DBer) {
-	_store = &serviceStore{db}
+	_store = &store{db}
 }
 
-type serviceStore struct {
+type store struct {
 	DBer
 }
 
-func (s *serviceStore) Init() error {
+func (s *store) Init() error {
 	return nil
 }
 
-func (s *serviceStore) Start() error {
+func (s *store) Start() error {
 	return nil
 }
 
-func (s *serviceStore) Stop() error {
+func (s *store) Stop() error {
 	return nil
 }
 
-var _store *serviceStore
+var _store *store
