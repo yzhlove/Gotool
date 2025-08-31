@@ -1,9 +1,10 @@
 package log
 
 import (
-	"fmt"
+	"bytes"
 	"log/slog"
 	"os"
+	"runtime"
 	"strings"
 )
 
@@ -54,13 +55,10 @@ func Error(err error) {
 	if err == nil {
 		_logger.Error("BAD ERROR!")
 	} else {
-		var sb = &strings.Builder{}
-		if _err := formatStacktrace(sb); _err != nil {
-			_logger.Error(_err.Error())
-		} else {
-			_logger.Error(err.Error(), slog.String("stacktrace", sb.String()))
-		}
-
-		fmt.Println(sb.String())
+		var buf = bytes.NewBuffer([]byte{})
+		stack := make([]uintptr, 1)
+		runtime.Callers(2, stack)
+		formatStacktrace(buf, stack)
+		_logger.Error(err.Error(), slog.String("stacktrace", buf.String()))
 	}
 }

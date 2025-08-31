@@ -1,7 +1,6 @@
 package log
 
 import (
-	"fmt"
 	"io"
 	"runtime"
 	"strconv"
@@ -24,40 +23,41 @@ func putStack(stack []uintptr) {
 	stackPools.Put(stack)
 }
 
-func formatStacktrace(w io.Writer) error {
-
-	u := make([]uintptr, 10)
-
-	ss := runtime.CallersFrames(u)
-	var more = true
-	var tf runtime.Frame
-	for more {
-		tf, more = ss.Next()
-		fmt.Println("---> ", tf.Function, tf.File, tf.Line)
-	}
+func formatStacktrace(buf io.Writer, trace []uintptr) {
+	stash, _ := runtime.CallersFrames(trace).Next()
 
 	stack := getStack()
 	defer putStack(stack)
 
 	num := runtime.Callers(1, stack)
-	next := num > 0
-
 	cursor := runtime.CallersFrames(stack[:num])
-	var f runtime.Frame
+	var frame runtime.Frame
+	var next = num > 0
+	var found bool
+
 	for next {
-		f, next = cursor.Next()
-		if err := formatFrame(w, f.Function, f.File, f.Line); err != nil {
-			return err
+		frame, next = cursor.Next()
+		if found {
+			_ = formatFrame(buf, frame.Function, frame.File, frame.Line)
+			continue
+		}
+		if stash.Function == frame.Function &&
+			stash.File == frame.File &&
+			stash.Line == frame.Line {
+			_ = formatFrame(buf, frame.Function, frame.File, frame.Line)
+			found = true
 		}
 	}
-	return nil
+	if !found {
+		_ = formatFrame(buf, stash.Function, stash.File, stash.Line)
+	}
 }
 
 func formatFrame(w io.Writer, fun, file string, line int) error {
 	if _, err := w.Write([]byte(fun)); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte("\n")); err != nil {
+	if _, err := w.Write([]byte("\n\t")); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte(file)); err != nil {
