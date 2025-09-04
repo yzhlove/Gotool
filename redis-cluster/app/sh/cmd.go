@@ -6,13 +6,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/yzhlove/Gotool/redis-cluster/app/module/cmds"
-	"github.com/yzhlove/Gotool/redis-cluster/app/module/log"
 	"io"
 	"log/slog"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/yzhlove/Gotool/redis-cluster/app/module/cmds"
+	"github.com/yzhlove/Gotool/redis-cluster/app/module/log"
 )
 
 func Which(command string) bool {
@@ -38,11 +39,11 @@ func StartNode(path string) error {
 	return nil
 }
 
-func StartCluster(ports []string) error {
+func StartCluster(clientIp string, ports []string) error {
 
 	hosts := make([]string, 0, len(ports))
 	for _, port := range ports {
-		hosts = append(hosts, fmt.Sprintf("127.0.0.1:%s", port))
+		hosts = append(hosts, fmt.Sprintf("%s:%s", clientIp, port))
 	}
 
 	args := cmds.NewCMD("",

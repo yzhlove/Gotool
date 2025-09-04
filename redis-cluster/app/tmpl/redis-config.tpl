@@ -20,6 +20,6 @@ cluster-node-timeout 15000
 dbfilename "dump.rdb"
 # 指定数据文件(AOF,RDB)存放位置，必须要指定不同的目录位置，不然会丢失数据
 dir {{ .DataDir }}
-cluster-announce-ip redis-cluster
+cluster-announce-ip {{ .ClientIp }}
 cluster-announce-port {{ .Port }}
 cluster-announce-bus-port {{ .BusPort }}

@@ -3,14 +3,16 @@ package tmpl
 import (
 	_ "embed"
 	"fmt"
-	"github.com/yzhlove/Gotool/redis-cluster/app/conf"
 	"path/filepath"
+
+	"github.com/yzhlove/Gotool/redis-cluster/app/conf"
 )
 
 //go:embed redis-config.tpl
 var RedisTemplate string
 
 type Redis struct {
+	ClientIp       string // 指定的端口
 	Port           string // redis 通信端口
 	BusPort        string // redis 总线端口
 	ClusterCfgName string // 集群配置文件名称
@@ -20,8 +22,9 @@ type Redis struct {
 	DataDir        string // 数据存储路径
 }
 
-func NesRedisTpl(port string, functions ...RedisFunc) *Redis {
+func NesRedisTpl(clientIp, port string, functions ...RedisFunc) *Redis {
 	redis := &Redis{
+		ClientIp:       clientIp,
 		Port:           port,
 		BusPort:        fmt.Sprintf("1%s", port),
 		PidPath:        fmt.Sprintf("/%s/%s/redis.pid", conf.RedisDir, port), // 默认路径 "/redis-cluster-test/port/redis.pid"

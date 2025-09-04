@@ -2,14 +2,15 @@ package handler
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"text/template"
+
 	"github.com/yzhlove/Gotool/redis-cluster/app/conf"
 	"github.com/yzhlove/Gotool/redis-cluster/app/helper"
 	"github.com/yzhlove/Gotool/redis-cluster/app/module/env"
 	"github.com/yzhlove/Gotool/redis-cluster/app/sh"
 	"github.com/yzhlove/Gotool/redis-cluster/app/tmpl"
-	"os"
-	"path/filepath"
-	"text/template"
 )
 
 func Run() error {
@@ -41,10 +42,12 @@ func Run() error {
 
 	// 创建 redis 配置文件
 	ports := env.GetRedisPorts()
+	// 客户端IP
+	clientIp := env.GetClientIp()
 
 	for _, port := range ports {
 		// 创建配置文件模板
-		redisTpl := tmpl.NesRedisTpl(port, tmpl.WithWorkDir(workdir))
+		redisTpl := tmpl.NesRedisTpl(clientIp, port, tmpl.WithWorkDir(workdir))
 		metapath := filepath.Join(cfgDir, fmt.Sprintf("redis-%s.conf", port))
 
 		// 创建 redis 配置文件
@@ -64,7 +67,7 @@ func Run() error {
 	}
 
 	// 加入 redis 集群
-	if err = sh.StartCluster(ports); err != nil {
+	if err = sh.StartCluster(clientIp, ports); err != nil {
 		return fmt.Errorf("start redis cluster error: %v", err)
 	}
 	return nil
