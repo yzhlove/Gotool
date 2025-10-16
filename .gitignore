@@ -7,3 +7,4 @@ go.work.sum
 bagder
 cipher/badger
 cipher/badger/*
+redis-dump/redis-dump
