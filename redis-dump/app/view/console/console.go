@@ -30,8 +30,10 @@ func Console(path string) {
 	}
 	defer f.Close()
 
-	metas, err := rdb.Dump(f)
-	if err != nil {
+	var metas []*rdb.Meta
+	if err = rdb.Dump(f, func(meta *rdb.Meta) {
+		metas = append(metas, meta)
+	}); err != nil {
 		log.Error("parse file failed!", log.ErrWrap(err))
 		return
 	}
