@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"fmt"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"rain.com/Gotool/redis-dump/app/config"
@@ -23,7 +21,6 @@ func inputCallback(position fyne.Position, uris []fyne.URI) {
 	var strs = make([]string, len(uris))
 	for k, v := range uris {
 		strs[k] = v.String()
-		fmt.Println("--------> ", v.String())
 	}
 	data.Update(strs)
 }

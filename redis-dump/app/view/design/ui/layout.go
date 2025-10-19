@@ -2,12 +2,15 @@ package ui
 
 import (
 	"fmt"
+	"image/color"
 	"log/slog"
 	"net/url"
 	"os"
 	"sync/atomic"
+	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/theme"
@@ -17,7 +20,7 @@ import (
 	"rain.com/Gotool/redis-dump/app/internal/rdb"
 	"rain.com/Gotool/redis-dump/app/log"
 	"rain.com/Gotool/redis-dump/app/view/design/data"
-	"rain.com/Gotool/redis-dump/app/view/design/res"
+	"rain.com/Gotool/redis-dump/app/view/design/widgets"
 )
 
 type rdbLayout struct {
@@ -43,9 +46,7 @@ func New(window fyne.Window, conf *config.Config) *rdbLayout {
 
 func (r *rdbLayout) registry() {
 	data.AddListen(func() {
-		fmt.Println("-------- 1")
 		if r.status.CompareAndSwap(false, true) {
-			fmt.Println("-------- 2")
 			select {
 			case r.notify <- struct{}{}:
 			default:
@@ -59,7 +60,6 @@ func (r *rdbLayout) monitor() {
 		for {
 			select {
 			case <-r.notify:
-				fmt.Println("-------- 3")
 				r.run()
 			}
 		}
@@ -69,7 +69,6 @@ func (r *rdbLayout) monitor() {
 func (r *rdbLayout) run() {
 	defer r.status.Store(false)
 	for _, uri := range data.Get() {
-		fmt.Println("-----------> ", uri)
 		u, err := url.Parse(uri)
 		if err != nil {
 			log.Error("parse url failed! ", slog.String("uri", uri), log.ErrWrap(err))
@@ -100,12 +99,13 @@ func (r *rdbLayout) setValue(path string) error {
 }
 
 func (r *rdbLayout) Layout() fyne.CanvasObject {
+
 	ls := widget.NewListWithData(r.data, func() fyne.CanvasObject {
-		hashIcon := widget.NewIcon(res.ResourceHashPng)
-		showBtn := widget.NewButtonWithIcon(" 详情 ", theme.GridIcon(), nil)
+		rectangle := widgets.NewRectangleText()
+		showBtn := widget.NewButtonWithIcon(" -- 详  情 -- ", theme.GridIcon(), nil)
 		showBtn.Importance = widget.HighImportance
 		keyLabel := widget.NewLabel("")
-		return container.NewBorder(nil, nil, hashIcon, showBtn, keyLabel)
+		return container.NewBorder(nil, nil, rectangle, showBtn, keyLabel)
 	}, func(item binding.DataItem, object fyne.CanvasObject) {
 		it := item.(binding.Item[*rdb.Meta])
 		if ret, err := it.Get(); err == nil {
@@ -113,26 +113,76 @@ func (r *rdbLayout) Layout() fyne.CanvasObject {
 			if len(ctrl.Objects) == 3 {
 
 				redisKeyLabel := ctrl.Objects[0].(*widget.Label)
-				redisTypeIcon := ctrl.Objects[1].(*widget.Icon)
+				redisTypeIcon := ctrl.Objects[1].(*widgets.RectangleWithText)
 				showBtn := ctrl.Objects[2].(*widget.Button)
 				showBtn.OnTapped = func() {
-
+					NewList(r.window, ret).Show()
 				}
+
 				switch ret.RedisData.GetType() {
 				case parser.StringType:
-					redisTypeIcon.SetResource(res.ResourceStringPng)
+					redisTypeIcon.Update(
+						widgets.WithText("--STR-"),
+						widgets.WithFillColor(widgets.Green),
+						widgets.WithStrokeColor(widgets.Gray),
+						widgets.WithTextColor(color.White),
+					)
 				case parser.HashType:
-					redisTypeIcon.SetResource(res.ResourceHashPng)
+					redisTypeIcon.Update(
+						widgets.WithText("HASH"),
+						widgets.WithFillColor(widgets.Red),
+						widgets.WithStrokeColor(widgets.Gray),
+						widgets.WithTextColor(color.White),
+					)
 				case parser.ListType:
-					redisTypeIcon.SetResource(res.ResourceListPng)
+					redisTypeIcon.Update(
+						widgets.WithText("LIST"),
+						widgets.WithFillColor(widgets.Orange),
+						widgets.WithStrokeColor(widgets.Gray),
+						widgets.WithTextColor(color.White),
+					)
 				case parser.SetType:
-					redisTypeIcon.SetResource(res.ResourceSetPng)
+					redisTypeIcon.Update(
+						widgets.WithText("--SET-"),
+						widgets.WithFillColor(widgets.Yellow),
+						widgets.WithStrokeColor(widgets.Gray),
+						widgets.WithTextColor(color.White),
+					)
 				case parser.ZSetType:
-					redisTypeIcon.SetResource(res.ResourceZsetPng)
+					redisTypeIcon.Update(
+						widgets.WithText("ZSET"),
+						widgets.WithFillColor(widgets.Violet),
+						widgets.WithStrokeColor(widgets.Gray),
+						widgets.WithTextColor(color.White),
+					)
+				case parser.DBSizeType, parser.AuxType:
+					redisTypeIcon.Update(
+						widgets.WithText("  DEF "),
+						widgets.WithFillColor(widgets.Indigo),
+						widgets.WithStrokeColor(widgets.Gray),
+						widgets.WithTextColor(color.White),
+					)
 				}
-				redisKeyLabel.SetText(ret.RedisData.GetKey())
+
+				var strText string
+				if tm := ret.RedisData.GetExpiration(); tm != nil {
+					strText = fmt.Sprintf("Key=%s|ExpireTime=%s",
+						ret.RedisData.GetKey(),
+						tm.Format(time.RFC3339))
+				} else {
+					strText = fmt.Sprintf("Key=%s", ret.RedisData.GetKey())
+				}
+				redisKeyLabel.SetText(strText)
 			}
 		}
 	})
-	return ls
+
+	line := canvas.NewLine(widgets.Violet)
+	line.StrokeWidth = 2
+	top := container.NewBorder(nil, line, nil, nil, nil)
+
+	return widget.NewCard(
+		"RedisDump工具",
+		"Tips: 请将RDB文件拖拽进当前窗口!!!",
+		container.NewBorder(top, nil, nil, nil, ls))
 }
