@@ -18,7 +18,6 @@ func main() {
 
 	contents := make([]*Content, 0, 128)
 	if err = ReadDir(func(c *Content) {
-		c.optTime()
 		contents = append(contents, c)
 	}); err != nil {
 		slog.Error("read dir failed! ", slog.Any("err", err))

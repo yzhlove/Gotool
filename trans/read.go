@@ -27,6 +27,7 @@ func ReadDir(callback func(c *Content)) error {
 		defer close(stop)
 		for content := range chstr {
 			if c := toContent(content); c != nil {
+				c.optTime()
 				callback(c)
 			}
 		}

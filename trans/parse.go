@@ -55,7 +55,7 @@ type Content struct {
 }
 
 func (c *Content) optTime() {
-	if tm, err := time.Parse(c.Time, time.RFC3339); err == nil {
+	if tm, err := time.Parse(time.RFC3339, c.Time); err == nil {
 		c.Timestamp = tm.Unix()
 	}
 }
