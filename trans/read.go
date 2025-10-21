@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -37,10 +38,13 @@ func ReadDir(callback func(c *Content)) error {
 	if err := filepath.WalkDir(cc.Path, func(path string, d fs.DirEntry, err error) error {
 		if err == nil {
 			if !d.IsDir() {
+				if strings.HasPrefix(d.Name(), ".") || strings.HasPrefix(d.Name(), "~") {
+					return nil
+				}
 				wg.Go(func() {
 					value, err := toJson(path)
 					if err != nil {
-						slog.Error("to json failed! ", slog.Any("error", err))
+						slog.Error("to json failed! ", slog.String("path", path), slog.Any("error", err))
 						return
 					}
 					if strs := getContent(value); len(strs) != 0 {
