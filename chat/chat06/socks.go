@@ -5,33 +5,61 @@ import (
 	"errors"
 	"io"
 	"net"
+	"strconv"
 )
 
-type SocksReadOpt interface {
+type Reader interface {
 	Read(reader io.Reader) error
 }
 
-type SocksWriteOpt interface {
-	Replay(writer io.Writer) error
+type Writer interface {
+	Write(writer io.Writer) error
 }
 
 const (
 	SocksVer            = 0x05
 	UserVer             = 0x01
 	NoAuthMethod        = 0x00
-	UsernameMethod      = 0x02
+	UserMethod          = 0x02
+	AuthSucceed         = 0x00
+	AuthFailed          = 0x01
 	NoAcceptableMethods = 0xFF
 	AddrIpv4            = 0x01
 	AddrIpv6            = 0x04
 	AddrDomain          = 0x03
 )
 
+/*
+X’00’ succeeded
+X’01’ general SOCKS server failure
+X’02’ connection not allowed by ruleset
+X’03’ Network unreachable
+X’04’ Host unreachable
+X’05’ Connection refused
+X’06’ TTL expired
+X’07’ Command not supported
+X’08’ Address type not supported
+X’09’ to X’FF’ unassigned
+*/
+
+const (
+	RepSucceeded       = 0x00
+	RepFailure         = 0x01
+	RepAllowed         = 0x02
+	RepNetUnreachable  = 0x03
+	RepHostUnreachable = 0x04
+	RepConnRefused     = 0x05
+	RepTTLExpired      = 0x06
+	RepCmdUnsupported  = 0x07
+	RepAddrUnsupported = 0x08
+)
+
 var (
-	errBadVersion  = errors.New("socks version not supported! ")
-	errBadMethod   = errors.New("bad method! ")
-	errBadUser     = errors.New("bad user! ")
-	errBadPassword = errors.New("bad password! ")
-	errBadNetwork  = errors.New("bad network! ")
+	errBadVersion  = errors.New("Bad socks version! ")
+	errBadMethod   = errors.New("Bad method! ")
+	errBadUser     = errors.New("Bad user! ")
+	errBadPassword = errors.New("Bad password! ")
+	errBadNetwork  = errors.New("Bad network! ")
 )
 
 type MethodsReq struct {
@@ -68,7 +96,7 @@ type MethodResp struct {
 	Method byte
 }
 
-func (opt *MethodResp) Replay(writer io.Writer) error {
+func (opt *MethodResp) Write(writer io.Writer) error {
 	_, err := writer.Write([]byte{SocksVer, opt.Method})
 	return err
 }
@@ -77,7 +105,7 @@ type MethodsResp struct {
 	Methods []byte
 }
 
-func (opt *MethodsResp) Replay(writer io.Writer) error {
+func (opt *MethodsResp) Write(writer io.Writer) error {
 	data := make([]byte, 2+len(opt.Methods))
 	data[0] = SocksVer
 	data[1] = byte(len(opt.Methods))
@@ -131,28 +159,114 @@ func (opt *UserAuthReq) Read(reader io.Reader) error {
 	return nil
 }
 
+func (opt *UserAuthReq) Write(writer io.Writer) (err error) {
+
+	data := make([]byte, 0, 2+len(opt.Username)+1+len(opt.Password))
+	data = append(data, opt.Version)
+	data = append(data, byte(len(opt.Username)))
+	data = append(data, opt.Username...)
+	data = append(data, byte(len(opt.Password)))
+	data = append(data, opt.Password...)
+	_, err = writer.Write(data)
+	return
+}
+
 type UserAuthResp struct {
 	Version byte
 	Status  byte
 }
 
-func (opt *UserAuthResp) Replay(writer io.Writer) error {
+func (opt *UserAuthResp) Write(writer io.Writer) error {
 	_, err := writer.Write([]byte{opt.Version, opt.Status})
 	return err
 }
 
-type AddrReq struct {
-	Cmd  byte
+type Address struct {
+	Type byte
 	Host string
 	Port uint16
 }
 
-func (opt *AddrReq) Read(reader io.Reader) error {
+func (a *Address) String() string {
+	return net.JoinHostPort(a.Host, strconv.Itoa(int(a.Port)))
+}
+
+func (a *Address) Encode(b []byte) (pos int, err error) {
+	b[0] = a.Type
+	pos = 1
+	switch a.Type {
+	case AddrIpv4:
+		ip4 := net.ParseIP(a.Host).To4()
+		if ip4 == nil {
+			ip4 = net.IPv4zero.To4()
+		}
+		pos += copy(b[pos:], ip4)
+	case AddrIpv6:
+		ip16 := net.ParseIP(a.Host).To16()
+		if ip16 == nil {
+			ip16 = net.IPv6zero.To16()
+		}
+		pos += copy(b[pos:], ip16)
+	case AddrDomain:
+		b[pos] = byte(len(a.Host))
+		pos++
+		pos += copy(b[pos:], a.Host)
+	default:
+		b[0] = AddrIpv4
+		pos += copy(b[pos:pos+4], net.IPv4zero.To4())
+	}
+	binary.BigEndian.PutUint16(b[pos:pos+2], a.Port)
+	pos += 2
+	return
+}
+
+func (a *Address) Length() (n int) {
+	switch a.Type {
+	case AddrIpv4:
+		n = 4 + net.IPv4len + 2
+	case AddrIpv6:
+		n = 4 + net.IPv6len + 2
+	case AddrDomain:
+		n = 4 + 1 + len(a.Host) + 2
+	default:
+		n = 4 + net.IPv4len + 2
+	}
+	return
+}
+
+func (a *Address) Decode(b []byte) (err error) {
+	a.Type = b[0]
+	pos := 1
+	switch a.Type {
+	case AddrIpv4:
+		a.Host = net.IPv4(b[pos], b[pos+1], b[pos+2], b[pos+3]).String()
+		pos += net.IPv4len
+	case AddrIpv6:
+		a.Host = net.IP(b[pos : pos+net.IPv6len]).String()
+		pos += net.IPv6len
+	case AddrDomain:
+		domainLen := int(b[pos])
+		pos++
+		a.Host = string(b[pos : pos+domainLen])
+		pos += domainLen
+	default:
+		return errBadNetwork
+	}
+	a.Port = binary.BigEndian.Uint16(b[pos : pos+2])
+	return nil
+}
+
+type ConnectReq struct {
+	Cmd  byte
+	Addr *Address
+}
+
+func (opt *ConnectReq) Read(reader io.Reader) error {
 
 	buf := GetBytes()
 	defer PutBytes(buf)
 
-	if _, err := io.ReadFull(reader, buf[:4]); err != nil {
+	if _, err := io.ReadFull(reader, buf[:5]); err != nil {
 		return err
 	}
 
@@ -160,34 +274,59 @@ func (opt *AddrReq) Read(reader io.Reader) error {
 		return errBadVersion
 	}
 	opt.Cmd = buf[1]
-
-	switch buf[3] {
+	var pos = 5
+	switch int(buf[3]) {
 	case AddrIpv4:
-		if _, err := io.ReadFull(reader, buf[:net.IPv4len]); err != nil {
-			return err
-		}
-		opt.Host = net.IPv4(buf[0], buf[1], buf[2], buf[3]).String()
+		pos += net.IPv4len - 1
 	case AddrIpv6:
-		if _, err := io.ReadFull(reader, buf[:net.IPv6len]); err != nil {
-			return err
-		}
-		opt.Host = net.IP(buf[:net.IPv6len]).String()
+		pos += net.IPv6len - 1
 	case AddrDomain:
-		if _, err := io.ReadFull(reader, buf[:1]); err != nil {
-			return err
-		}
-		domainLen := int(buf[0])
-		if _, err := io.ReadFull(reader, buf[:domainLen]); err != nil {
-			return err
-		}
-		opt.Host = string(buf[:domainLen])
+		pos += int(buf[4])
 	default:
 		return errBadNetwork
 	}
 
-	if _, err := io.ReadFull(reader, buf[:2]); err != nil {
+	// 还需要解析 port，所以必须再加2个 byte
+	pos += 2
+
+	if _, err := io.ReadFull(reader, buf[5:pos]); err != nil {
 		return err
 	}
-	opt.Port = binary.BigEndian.Uint16(buf[:2])
-	return nil
+
+	opt.Addr = new(Address)
+	// 这里必须包含 AType , 所以从 3 开始
+	return opt.Addr.Decode(buf[3:pos])
+}
+
+type AddressResp struct {
+	Req  byte
+	Addr *Address
+}
+
+func NewAddressResp(req byte, addr *Address) *AddressResp {
+	return &AddressResp{Req: req, Addr: addr}
+}
+
+func (opt *AddressResp) Write(writer io.Writer) (err error) {
+
+	buf := GetBytes()
+	defer PutBytes(buf)
+
+	buf[0] = SocksVer
+	buf[1] = opt.Req
+	buf[2] = 0 // rsv
+	buf[3] = AddrIpv4
+	length := 10
+	buf[4], buf[5], buf[6], buf[7], buf[8], buf[9] = 0, 0, 0, 0, 0, 0 // ipv4len + port
+
+	if opt.Addr != nil {
+		n, err := opt.Addr.Encode(buf[3:])
+		if err != nil {
+			return err
+		}
+		length = n + 3
+	}
+
+	_, err = writer.Write(buf[:length])
+	return
 }
