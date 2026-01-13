@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"strconv"
@@ -60,6 +62,7 @@ var (
 	errBadUser     = errors.New("Bad user! ")
 	errBadPassword = errors.New("Bad password! ")
 	errBadNetwork  = errors.New("Bad network! ")
+	errBadAddress  = errors.New("Bad address! ")
 )
 
 type MethodsReq struct {
@@ -185,6 +188,40 @@ type Address struct {
 	Type byte
 	Host string
 	Port uint16
+}
+
+func NewAddressFromPair(host string, port int) (addr *Address) {
+	addr = &Address{
+		Type: AddrDomain,
+		Host: host,
+		Port: uint16(port),
+	}
+
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.To4() != nil {
+			addr.Type = AddrIpv4
+		} else {
+			addr.Type = AddrIpv6
+		}
+	}
+	return
+}
+
+func NewAddrFromAddr(ln, conn net.Addr) (addr *Address, err error) {
+	_, sport, err := net.SplitHostPort(ln.String())
+	if err != nil {
+		return nil, err
+	}
+	host, _, err := net.SplitHostPort(conn.String())
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := strconv.Atoi(sport)
+	if err != nil {
+		return nil, err
+	}
+	return NewAddressFromPair(host, port), nil
 }
 
 func (a *Address) String() string {
@@ -329,4 +366,129 @@ func (opt *AddressResp) Write(writer io.Writer) (err error) {
 
 	_, err = writer.Write(buf[:length])
 	return
+}
+
+/*
+UDPHeader is the header of an UDP request
+ +----+------+------+----------+----------+----------+
+ |RSV | FRAG | ATYP | DST.ADDR | DST.PORT |   DATA   |
+ +----+------+------+----------+----------+----------+
+ | 2  |  1   |  1   | Variable |    2     | Variable |
+ +----+------+------+----------+----------+----------+
+*/
+
+type UDPHeader struct {
+	Rsv  uint16 // socks5协议中为保留字段，默认值为 0x00 , UDP over TCP中为 UDPDatagram Length
+	FRAG byte
+	Addr *Address
+}
+
+func NewUDPHeader(rsv uint16, frag byte, addr *Address) *UDPHeader {
+	return &UDPHeader{
+		Rsv:  rsv,
+		FRAG: frag,
+		Addr: addr,
+	}
+}
+
+func (header *UDPHeader) Write(writer io.Writer) (err error) {
+	b := GetBytes()
+	defer PutBytes(b)
+
+	binary.BigEndian.PutUint16(b[:2], header.Rsv) // UDP over TCP datagram len
+	b[2] = header.FRAG
+
+	if header.Addr == nil {
+		header.Addr = new(Address)
+	}
+
+	pos, err := header.Addr.Encode(b[3:])
+	if err != nil {
+		return err
+	}
+	_, err = writer.Write(b[:pos+3])
+	return
+}
+
+func (header *UDPHeader) String() string {
+	return fmt.Sprintf("%d %d %d %s", header.Rsv, header.FRAG, header.Addr.Type, header.Addr.String())
+}
+
+type UDPDatagram struct {
+	Header *UDPHeader
+	Data   []byte
+}
+
+func (datagram *UDPDatagram) Read(reader io.Reader) (err error) {
+	b := GetBytes()
+	defer PutBytes(b)
+
+	n, err := io.ReadFull(reader, b[:5])
+	if err != nil {
+		return err
+	}
+
+	datagram.Header = &UDPHeader{
+		Rsv:  binary.BigEndian.Uint16(b[:2]),
+		FRAG: b[2],
+	}
+
+	aType := int(b[3])
+	var pos = n
+	switch aType {
+	case AddrIpv4:
+		pos += net.IPv4len - 1 + 2 // ipv4+port
+	case AddrIpv6:
+		pos += net.IPv6len - 1 + 2 // ipv6+port
+	case AddrDomain:
+		pos += int(b[4]) + 2 // domain len + domain + port
+	default:
+		return errBadAddress
+	}
+
+	dataLen := int(datagram.Header.Rsv)
+	if dataLen == 0 {
+		// standard SOCKS5 UDP datagram
+		extra, err := io.ReadAll(reader) // 读取 reader 里面剩余的所有数据
+		if err != nil {
+			return err
+		}
+		copy(b[n:], extra) // 之前读了 5个 bytes的数据，所以从 n 开始
+		n += len(extra)
+		dataLen = n - pos
+	} else {
+		if _, err := io.ReadFull(reader, b[n:pos+dataLen]); err != nil {
+			return err
+		}
+		n = pos + dataLen
+	}
+
+	datagram.Header.Addr = new(Address)
+	// [3,pos) is dst.Addr dst.Port
+	if err = datagram.Header.Addr.Decode(b[3:pos]); err != nil {
+		return err
+	}
+
+	datagram.Data = make([]byte, dataLen)
+	// [pos,n) is udp datagram
+	copy(datagram.Data, b[pos:n])
+	return
+}
+
+func (datagram *UDPDatagram) Write(writer io.Writer) (err error) {
+
+	header := datagram.Header
+	if header == nil {
+		header = new(UDPHeader)
+	}
+
+	buf := new(bytes.Buffer)
+	if err = header.Write(buf); err != nil {
+		return err
+	}
+	if _, err = buf.Write(datagram.Data); err != nil {
+		return err
+	}
+	_, err = buf.WriteTo(writer)
+	return err
 }

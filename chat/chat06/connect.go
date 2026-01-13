@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 )
@@ -44,10 +45,44 @@ func TcpConnect(conn net.Conn, addr *Address) (err error) {
 
 func UdpConnect(conn net.Conn, addr *Address) (err error) {
 
+	/*
+		客户端先和 SOCKS5 服务器建立 TCP 连接，发送 UDP ASSOCIATE 请求（CMD=0x03）。
+		服务器响应客户端，告知客户端用于 UDP 转发的本地端口。
+		客户端后续将 UDP 数据包封装成 SOCKS5 UDP 包格式，发送到服务器指定的 UDP 端口。
+		服务器解析 SOCKS5 UDP 包，转发到目标地址，再将响应包封装后返回给客户端。
+	*/
+
+	ls, err := net.ListenUDP("udp", nil)
+	if err != nil {
+		resp := NewAddressResp(RepFailure, nil)
+		if err = resp.Write(conn); err != nil {
+			return err
+		}
+		return err
+	}
+	defer ls.Close()
+
+	udpAddr, err := NewAddrFromAddr(ls.LocalAddr(), conn.LocalAddr())
+	if err != nil {
+		return err
+	}
+
+	resp := NewAddressResp(RepSucceeded, udpAddr)
+	if err = resp.Write(conn); err != nil {
+		return err
+	}
+
+	if err = Tunnel(context.Background(), ls); err != nil {
+		return err
+	}
+
+	TcpWaitEOF(conn)
 	return nil
 }
 
 func BindConnect(conn net.Conn, addr *Address) (err error) {
 
-	return nil
+	// 不支持改命令
+	resp := NewAddressResp(RepCmdUnsupported, nil)
+	return resp.Write(conn)
 }
