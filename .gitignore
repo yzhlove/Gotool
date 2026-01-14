@@ -3,6 +3,7 @@ testFiles
 go.work
 go.work.sum
 .idea
+.idea/
 .DS_Store
 bagder
 cipher/badger

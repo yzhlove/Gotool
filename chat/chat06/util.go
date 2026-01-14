@@ -46,6 +46,11 @@ func Tunnel(ctx context.Context, udp net.PacketConn) error {
 				return err
 			}
 
+			if n < MinUdpDatagramLen {
+				log.Println("udp datagram len too small! ")
+				continue
+			}
+
 			datagram := new(UDPDatagram)
 			if err = datagram.Read(bytes.NewReader(b[:n])); err != nil {
 				return err

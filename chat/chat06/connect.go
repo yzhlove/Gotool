@@ -52,6 +52,8 @@ func UdpConnect(conn net.Conn, addr *Address) (err error) {
 		服务器解析 SOCKS5 UDP 包，转发到目标地址，再将响应包封装后返回给客户端。
 	*/
 
+	fmt.Println("udp listener connect ing...", addr.String())
+
 	ls, err := net.ListenUDP("udp", nil)
 	if err != nil {
 		resp := NewAddressResp(RepFailure, nil)
@@ -62,19 +64,27 @@ func UdpConnect(conn net.Conn, addr *Address) (err error) {
 	}
 	defer ls.Close()
 
+	fmt.Println("udp listener address...", ls.LocalAddr().String())
+
 	udpAddr, err := NewAddrFromAddr(ls.LocalAddr(), conn.LocalAddr())
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("udp addr...", udpAddr.String())
 
 	resp := NewAddressResp(RepSucceeded, udpAddr)
 	if err = resp.Write(conn); err != nil {
 		return err
 	}
 
+	fmt.Println("udp resp ok ...")
+
 	if err = Tunnel(context.Background(), ls); err != nil {
 		return err
 	}
+
+	fmt.Println("udp tunnel ok ...")
 
 	TcpWaitEOF(conn)
 	return nil
