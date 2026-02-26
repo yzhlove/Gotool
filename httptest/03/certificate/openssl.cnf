@@ -1,0 +1,46 @@
+# ----- 通用 req 配置 -----
+[ req ]
+default_bits        = 2048
+distinguished_name  = req_distinguished_name
+prompt              = no
+# req_extensions 指定的是生成 CSR / 证书时默认使用的扩展
+# 做 CA 证书时用 v3_ca，做服务器证书时会在命令行覆盖为 v3_server
+# req_extensions      = v3_server
+
+[ req_distinguished_name ]
+C  = CN
+ST = Shanghai
+L  = Shanghai
+O  = MyTestOrg
+OU = MyTestUnit
+CN = www.yzhdomain.com
+
+# ----- CA 证书用的扩展 -----
+[ v3_ca ]
+basicConstraints = critical, CA:TRUE
+keyUsage = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+
+# ----- 服务器证书用的扩展（带 SAN） -----
+[ v3_server ]
+basicConstraints = CA:FALSE
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+subjectKeyIdentifier = hash
+
+[ v3_client ]
+basicConstraints = CA:FALSE
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = clientAuth
+subjectKeyIdentifier = hash
+
+# 这里引用下面 [alt_names] 中的条目
+subjectAltName = @alt_names
+
+[ alt_names ]
+DNS.1   = localhost
+DNS.2   = www.yzhdomain.com
+IP.1    = 127.0.0.1
+IP.2    = 10.155.120.47
+IP.3    = 10.155.90.131
