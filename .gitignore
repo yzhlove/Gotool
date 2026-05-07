@@ -10,3 +10,4 @@ cipher/badger
 cipher/badger/*
 redis-dump/redis-dump
 trans/jsonformat
+.claude
