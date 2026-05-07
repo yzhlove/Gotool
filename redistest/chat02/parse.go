@@ -13,6 +13,8 @@ import (
 
 func Handel(c net.Conn) error {
 
+	fmt.Println("handle running...")
+
 	defer func() {
 		if err := c.Close(); err != nil {
 			log.Println("CloseError: ", err)
@@ -90,10 +92,8 @@ func Auth(reply *ArrayReply) (string, error) {
 		return "", fmt.Errorf("Auth: cmd is not AUTH! ")
 	}
 
-	if len(reply.data) != 2 {
-		return "", fmt.Errorf("Auth: params is not 2! ")
-	}
-	return string(reply.data[1]), nil
+	server := reply.data[len(reply.data)-1]
+	return string(server), nil
 }
 
 func Tcp(cli, sev net.Conn) {
