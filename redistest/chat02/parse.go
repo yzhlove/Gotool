@@ -43,8 +43,18 @@ func Handel(c net.Conn) error {
 		return err
 	}
 
-	if Hello(reply.(*ArrayReply)) {
-		_, _ = c.Write(NewOkReply().ToBytes())
+	value := reply.(*ArrayReply)
+
+	fmt.Println("P---------------- 1")
+	for _, v := range value.data {
+		fmt.Println(string(v))
+	}
+	fmt.Println("P---------------- 2")
+
+	if err = Hello(value); err != nil {
+		fmt.Println("hello 2 resp error --> ", err)
+		_, _ = c.Write(NewErrReply([]byte(err.Error())).ToBytes())
+		return err
 	}
 
 	sevName, err := Auth(reply.(*ArrayReply))
@@ -65,25 +75,16 @@ func Handel(c net.Conn) error {
 	return nil
 }
 
-func Hello(reply *ArrayReply) bool {
-
-	fmt.Println("H---------------- 1")
-	for _, v := range reply.data {
-		fmt.Println(string(v))
+func Hello(reply *ArrayReply) error {
+	if strings.ToUpper(string(reply.data[0])) == "HELLO" {
+		if string(reply.data[1]) == "2" {
+			return fmt.Errorf("ERR unknown command `HELLO`, with args beginning with: `2`")
+		}
 	}
-	fmt.Println("H---------------- 2")
-
-	return strings.ToUpper(string(reply.data[0])) != "HELLO"
+	return nil
 }
 
 func Auth(reply *ArrayReply) (string, error) {
-
-	fmt.Println("A---------------- 1")
-	for _, v := range reply.data {
-		fmt.Println(string(v))
-	}
-	fmt.Println("A---------------- 2")
-
 	if len(reply.data) == 0 {
 		return "", fmt.Errorf("Auth: params is 0! ")
 	}
